@@ -32,6 +32,19 @@
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
+    // Add names of councils we are working with here, as per geoJSON file
+    var greenCouncils = [
+      "Greater Bendigo City",
+      "Hepburn Shire",
+      "Maribyrnong City",
+      "Melbourne City",
+      "Merri - Bek City",
+      "Mornington Peninsula Shire",
+      "Port Phillip City",
+      "Whittlesea City",
+      "Yarra Ranges Shire"
+];
+
     // Load GeoJSON data from external file
     L.geoJson.ajax('councils.geojson', {
       style: function (feature) {
