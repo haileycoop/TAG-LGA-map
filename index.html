@@ -38,7 +38,12 @@
         // Your styling logic here
       },
       onEachFeature: function (feature, layer) {
-        layer.bindPopup(feature.properties.name);
+        // Check if the GeoJSON has a "LGA_NAME" property
+        if (feature.properties && feature.properties.LGA_NAME) {
+          layer.bindPopup(feature.properties.LGA_NAME);
+        } else {
+          console.warn("No 'LGA_NAME' property found for this feature:", feature);
+        }
       }
     }).addTo(map);
   </script>
