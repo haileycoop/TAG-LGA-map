@@ -46,6 +46,10 @@
 ];
 
     // Load GeoJSON data from external file
+    // Data source: https://data.gov.au/dataset/ds-dga-bdf92691-c6fe-42b9-a0e2-a4cd716fa811/details
+    // Converrted to GeoJSON using QGIS
+    // Data is licensed under creative commons
+    // TODO: ensure we attribute the data source if we use this openly
       L.geoJson.ajax('councils.geojson', {
         style: function (feature) {
           var fillColor = greenCouncils.includes(feature.properties.LGA_NAME) ? 'green' : 'blue';
