@@ -48,7 +48,15 @@
     // Load GeoJSON data from external file
     L.geoJson.ajax('councils.geojson', {
       style: function (feature) {
-        // Your styling logic here
+        var fillColor = greenCouncils.includes(feature.properties.LGA_NAME) ? 'green' : 'blue';
+
+        return {
+          fillColor: fillColor,
+          weight: 2,
+          opacity: 1,
+          color: 'green',
+          fillOpacity: 0.7
+        };
       },
       onEachFeature: function (feature, layer) {
         // Check if the GeoJSON has a "LGA_NAME" property
