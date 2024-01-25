@@ -1,0 +1,105 @@
+#Current LGAs
+Greater Bendigo City
+Hepburn Shire
+Maribyrnong City
+Melbourne City
+Merri-Bek City
+Mornington Peninsula Shire
+Port Phillip City
+Whittlesea City
+Yarra Ranges Shire
+
+#All Names
+
+Alpine Shire
+Ararat Rural City
+Ballarat City
+Banyule City
+Bass Coast Shire
+Bass Coast Shire
+Bass Coast Shire
+Baw Baw Shire
+Bayside City
+Benalla Rural City
+Boroondara City
+Brimbank City
+Buloke Shire
+Campaspe Shire
+Cardinia Shire
+Casey City
+Central Goldfields Shire
+Colac Otway Shire
+Corangamite Shire
+Darebin City
+East Gippsland Shire
+Falls Creek Alpine Resort (Unincorporated)
+Frankston City
+French-Elizabeth-Sandstone Islands (Uninc)
+French-Elizabeth-Sandstone Islands (Uninc)
+French-Elizabeth-Sandstone Islands (Uninc)
+Gabo Island (Unincorporated)
+Gannawarra Shire
+Glen Eira City
+Glenelg Shire
+Golden Plains Shire
+Greater Bendigo City
+Greater Dandenong City
+Greater Geelong City
+Greater Shepparton City
+Hepburn Shire
+Hindmarsh Shire
+Hobsons Bay City
+Horsham Rural City
+Hume City
+Indigo Shire
+Kingston City
+Knox City
+Lake Mountain Alpine Resort (Unincorporated)
+Latrobe City
+Loddon Shire
+Macedon Ranges Shire
+Manningham City
+Mansfield Shire
+Maribyrnong City
+Maroondah City
+Melbourne City
+Melton City
+Merri-Bek City
+Mildura Rural City
+Mitchell Shire
+Moira Shire
+Monash City
+Moonee Valley City
+Moorabool Shire
+Mornington Peninsula Shire
+Mount Alexander Shire
+Mount Baw Baw Alpine Resort (Unincorporated)
+Mount Buller Alpine Resort (Unincorporated)
+Mount Hotham Alpine Resort (Unincorporated)
+Mount Stirling Alpine Resort (Unincorporated)
+Moyne Shire
+Murrindindi Shire
+Murrindindi Shire
+Nillumbik Shire
+Northern Grampians Shire
+Port Phillip City
+Pyrenees Shire
+Queenscliffe Borough
+South Gippsland Shire
+Southern Grampians Shire
+Stonnington City
+Strathbogie Shire
+Surf Coast Shire
+Swan Hill Rural City
+Towong Shire
+Wangaratta Rural City
+Warrnambool City
+Wellington Shire
+West Wimmera Shire
+Whitehorse City
+Whittlesea City
+Wodonga City
+Wyndham City
+Yarra City
+Yarra Ranges Shire
+Yarriambiack Shire
