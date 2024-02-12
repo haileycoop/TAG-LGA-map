@@ -52,14 +52,14 @@
     // TODO: ensure we attribute the data source if we use this openly
       L.geoJson.ajax('councils.geojson', {
         style: function (feature) {
-          var fillColor = greenCouncils.includes(feature.properties.LGA_NAME) ? 'green' : 'blue';
-          var fillOpacity = greenCouncils.includes(feature.properties.LGA_NAME) ? 0.7 : 0.2;
+          var fillColor = greenCouncils.includes(feature.properties.LGA_NAME) ? '#02fa07' : 'gray';
+          var fillOpacity = greenCouncils.includes(feature.properties.LGA_NAME) ? 0.6 : 0.2;
 
           return {
             fillColor: fillColor,
             weight: 2,
             opacity: 1,
-            color: 'green',
+            color: '#f55a42',
             fillOpacity: fillOpacity
           };
         },
