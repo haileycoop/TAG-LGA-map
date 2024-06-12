@@ -1,12 +1,14 @@
 #Current LGAs
 Greater Bendigo City
 Hepburn Shire
+Knox City
 Maribyrnong City
 Melbourne City
 Merri-Bek City
 Mornington Peninsula Shire
 Port Phillip City
 Whittlesea City
+Yarra City
 Yarra Ranges Shire
 
 #All Names
