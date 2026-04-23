@@ -23,7 +23,6 @@
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-ajax/dist/leaflet.ajax.js"></script>
 
   <script>
     var map = L.map('map').setView([-37.8136, 144.9631], 8);
@@ -32,53 +31,42 @@
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add names of councils we are working with here, as per geoJSON file
-    var greenCouncils = [
-      "Ballarat City",
-      "Banyule City",
-      "Boroondara City",
-      "Cardinia Shire",
-      "Casey City",
-      "Greater Bendigo City",
-      "Greater Shepparton City",
-      "Hepburn Shire",
-      "Indigo Shire",
-      "Knox City",
-      "Manningham City",
-      "Maribyrnong City",
-      "Melbourne City",
-      "Merri-Bek City",
-      "Mornington Peninsula Shire",
-      "Mount Alexander Shire",
-      "Port Phillip City",
-      "Stonnington City",
-      "Surf Coast Shire",
-      "Whittlesea City",
-      "Wyndham City",
-      "Yarra City",
-      "Yarra Ranges Shire"
-];
-
-    // Load GeoJSON data from external file
+    // TAG adopters: single source of truth in data/tag-adopters.json
+    // Boundaries: data/geo/councils-vic.geojson
     // Data source: https://data.gov.au/dataset/ds-dga-bdf92691-c6fe-42b9-a0e2-a4cd716fa811/details
-    // Converrted to GeoJSON using QGIS
-    // Data is licensed under creative commons
+    // Converted to GeoJSON using QGIS — licensed under Creative Commons
     // TODO: ensure we attribute the data source if we use this openly
-      L.geoJson.ajax('councils.geojson', {
-        style: function (feature) {
-          var fillColor = greenCouncils.includes(feature.properties.LGA_NAME) ? '#02fa07' : 'gray';
-          var fillOpacity = greenCouncils.includes(feature.properties.LGA_NAME) ? 0.6 : 0.2;
+    Promise.all([
+      fetch('data/tag-adopters.json').then(function (r) {
+        if (!r.ok) throw new Error('Failed to load tag-adopters.json: ' + r.status);
+        return r.json();
+      }),
+      fetch('data/geo/councils-vic.geojson').then(function (r) {
+        if (!r.ok) throw new Error('Failed to load councils-vic.geojson: ' + r.status);
+        return r.json();
+      })
+    ]).then(function (results) {
+      var tagPayload = results[0];
+      var geoData = results[1];
+      var list = tagPayload.adopters;
+      if (!Array.isArray(list)) {
+        throw new Error('tag-adopters.json must contain an "adopters" array');
+      }
+      var adopters = new Set(list);
 
+      L.geoJson(geoData, {
+        style: function (feature) {
+          var name = feature.properties && feature.properties.LGA_NAME;
+          var isTag = name && adopters.has(name);
           return {
-            fillColor: fillColor,
+            fillColor: isTag ? '#02fa07' : 'gray',
             weight: 2,
             opacity: 1,
             color: '#f55a42',
-            fillOpacity: fillOpacity
+            fillOpacity: isTag ? 0.6 : 0.2
           };
         },
         onEachFeature: function (feature, layer) {
-          // Check if the GeoJSON has a "LGA_NAME" property
           if (feature.properties && feature.properties.LGA_NAME) {
             layer.bindPopup(feature.properties.LGA_NAME);
           } else {
@@ -86,6 +74,14 @@
           }
         }
       }).addTo(map);
+    }).catch(function (err) {
+      console.error(err);
+      document.body.insertAdjacentHTML(
+        'afterbegin',
+        '<p style="font-family:sans-serif;padding:1rem;background:#fee;color:#800;">Map data failed to load. ' +
+        'If you just cloned the repo, add <code>data/geo/councils-vic.geojson</code> (your Victoria LGA GeoJSON; you can copy from the former <code>councils.geojson</code> at the project root).</p>'
+      );
+    });
   </script>
 
 </body>
