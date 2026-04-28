@@ -291,7 +291,7 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    var map = L.map('map').setView([-25.5, 134], 4);
+    var map = L.map('map').setView([-25.5, 134], 4.5);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
@@ -473,6 +473,22 @@
           }
         }
       }).addTo(map);
+
+      // Fit on mainland/state councils (exclude OT extents) so Australia starts closer.
+      var mainlandBounds = L.latLngBounds([]);
+      geoData.features.forEach(function (feature) {
+        var props = feature.properties || {};
+        if (String(props.stateCode || '') === '9') {
+          return; // OT can include far external islands that force a zoomed-out view.
+        }
+        var tmpLayer = L.geoJson(feature);
+        mainlandBounds.extend(tmpLayer.getBounds());
+      });
+      if (mainlandBounds.isValid()) {
+        map.fitBounds(mainlandBounds, { padding: [20, 20] });
+      } else {
+        map.fitBounds(mapLayer.getBounds(), { padding: [20, 20] });
+      }
 
       function refreshMap() {
         mapLayer.setStyle(function (feature) {
