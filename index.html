@@ -31,15 +31,6 @@
       width: 100%;
     }
 
-    .toolbar {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      z-index: 1200;
-      display: flex;
-      gap: 8px;
-    }
-
     .btn {
       border: 1px solid var(--ui-border);
       background: #fff;
@@ -65,13 +56,28 @@
       z-index: 1250;
       display: flex;
       flex-direction: column;
-      transform: translateX(100%);
-      transition: transform 0.2s ease;
       box-shadow: -4px 0 18px rgba(0, 0, 0, 0.12);
     }
 
-    .sidebar.open {
-      transform: translateX(0);
+    .view-toggle {
+      display: inline-flex;
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .view-toggle button {
+      border: none;
+      background: transparent;
+      padding: 6px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .view-toggle button.active {
+      background: #efefef;
+      font-weight: 600;
     }
 
     .sidebar-header {
@@ -232,6 +238,10 @@
       flex-wrap: wrap;
     }
 
+    .footer-actions.hidden {
+      display: none;
+    }
+
     .status {
       font-size: 12px;
       color: #444;
@@ -253,22 +263,21 @@
 </head>
 
 <body>
-  <div class="toolbar">
-    <button id="openPanelBtn" class="btn">Manage adopters</button>
-  </div>
-
   <aside id="sidebar" class="sidebar" aria-hidden="true">
     <div class="sidebar-header">
-      <h2 class="sidebar-title">Adopter manager</h2>
+      <h2 id="sidebarTitle" class="sidebar-title">TAG Partners</h2>
       <div style="display:flex; align-items:center; gap:8px;">
+        <div class="view-toggle">
+          <button id="partnersViewBtn" class="active" type="button">TAG Partners</button>
+          <button id="manageViewBtn" type="button">Manage Partners</button>
+        </div>
         <span id="modePill" class="mode-pill"></span>
-        <button id="closePanelBtn" class="btn">Close</button>
       </div>
     </div>
 
     <div class="sidebar-body">
       <div id="webWarning" class="warning" style="display:none;"></div>
-      <p class="hint">Toggle councils on/off. Councils are grouped by state. Use search to jump quickly.</p>
+      <p id="hintText" class="hint"></p>
 
       <input id="searchInput" class="search-input" placeholder="Search council name or code" />
       <div id="suggestions" class="suggestions"></div>
@@ -337,10 +346,12 @@
     var forceAdmin = new URLSearchParams(location.search).get('admin') === '1';
     var isLocalAdmin = forceAdmin || isLikelyLocalHost(location.hostname);
     var sidebar = document.getElementById('sidebar');
-    var openPanelBtn = document.getElementById('openPanelBtn');
-    var closePanelBtn = document.getElementById('closePanelBtn');
+    var sidebarTitle = document.getElementById('sidebarTitle');
+    var partnersViewBtn = document.getElementById('partnersViewBtn');
+    var manageViewBtn = document.getElementById('manageViewBtn');
     var modePill = document.getElementById('modePill');
     var webWarning = document.getElementById('webWarning');
+    var hintText = document.getElementById('hintText');
     var searchInput = document.getElementById('searchInput');
     var suggestionsEl = document.getElementById('suggestions');
     var stateContainer = document.getElementById('stateContainer');
@@ -353,19 +364,9 @@
     modePill.textContent = isLocalAdmin ? 'Local admin mode' : 'Web shared mode';
     if (!isLocalAdmin) {
       webWarning.style.display = 'block';
-      webWarning.textContent = 'Changes here are temporary and are not saved to the shared dataset. Use "Request changes from Hailey" to submit updates.';
+      webWarning.textContent = 'Manage Partners is available, but changes are temporary and not saved to shared data. Use "Request changes from Hailey".';
     }
-
-    openPanelBtn.addEventListener('click', function () {
-      sidebar.classList.add('open');
-      sidebar.setAttribute('aria-hidden', 'false');
-      searchInput.focus();
-    });
-
-    closePanelBtn.addEventListener('click', function () {
-      sidebar.classList.remove('open');
-      sidebar.setAttribute('aria-hidden', 'true');
-    });
+    sidebar.setAttribute('aria-hidden', 'false');
 
     function setStatus(msg, success) {
       statusEl.textContent = msg || '';
@@ -510,15 +511,49 @@
         byState[c.stateAbbrev].push(c);
       });
 
+      var currentView = 'partners'; // partners | manage
+
+      function applyViewMode() {
+        var isPartnersView = currentView === 'partners';
+        partnersViewBtn.classList.toggle('active', isPartnersView);
+        manageViewBtn.classList.toggle('active', !isPartnersView);
+        sidebarTitle.textContent = isPartnersView ? 'TAG Partners' : 'Manage Partners';
+        hintText.textContent = isPartnersView
+          ? 'Showing current TAG Partners only, grouped by state.'
+          : 'Toggle councils on/off. Councils are grouped by state. Use search to jump quickly.';
+        searchInput.style.display = isPartnersView ? 'none' : '';
+        suggestionsEl.className = 'suggestions';
+        suggestionsEl.innerHTML = '';
+        exportBtn.parentElement.classList.toggle('hidden', isPartnersView);
+      }
+
+      partnersViewBtn.addEventListener('click', function () {
+        currentView = 'partners';
+        applyViewMode();
+        renderStateSections(false);
+        setStatus('', false);
+      });
+
+      manageViewBtn.addEventListener('click', function () {
+        currentView = 'manage';
+        applyViewMode();
+        renderStateSections(false);
+        searchInput.focus();
+      });
+
       function renderStateSections(expandMatches) {
         stateContainer.innerHTML = '';
-        var query = searchInput.value.trim().toLowerCase();
+        var query = currentView === 'manage' ? searchInput.value.trim().toLowerCase() : '';
         stateOrder.forEach(function (st) {
           var councils = byState[st];
           if (!councils || councils.length === 0) return;
 
-          var filtered = councils;
-          if (query) {
+          var filtered = councils.filter(function (c) {
+            return currentView === 'manage' || adopters.has(c.lgaCode);
+          });
+          if (filtered.length === 0) return;
+
+          if (query && currentView === 'manage') {
             filtered = councils.filter(function (c) {
               return c.lgaName.toLowerCase().indexOf(query) !== -1 || c.lgaCode.indexOf(query) !== -1;
             });
@@ -537,7 +572,7 @@
 
           var list = document.createElement('div');
           list.className = 'state-list';
-          if (expandMatches || st === 'VIC') list.classList.add('open');
+          if (expandMatches || currentView === 'partners' || st === 'VIC') list.classList.add('open');
 
           filtered.forEach(function (c) {
             var row = document.createElement('label');
@@ -547,24 +582,30 @@
             var left = document.createElement('span');
             left.innerHTML = c.lgaName + ' <span class="code">' + c.lgaCode + '</span>';
 
-            var checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = 'adopter_' + c.lgaCode;
-            checkbox.checked = adopters.has(c.lgaCode);
-            checkbox.addEventListener('change', function () {
-              if (checkbox.checked) {
-                adopters.add(c.lgaCode);
-              } else {
-                adopters.delete(c.lgaCode);
-              }
-              refreshMap();
-              renderSuggestions(searchInput.value);
-              renderStateSections(false);
-              setStatus('Unsaved changes: ' + getDiffSummary(), false);
-            });
-
             row.appendChild(left);
-            row.appendChild(checkbox);
+            if (currentView === 'manage') {
+              var checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.id = 'adopter_' + c.lgaCode;
+              checkbox.checked = adopters.has(c.lgaCode);
+              checkbox.addEventListener('change', function () {
+                if (checkbox.checked) {
+                  adopters.add(c.lgaCode);
+                } else {
+                  adopters.delete(c.lgaCode);
+                }
+                refreshMap();
+                renderSuggestions(searchInput.value);
+                renderStateSections(false);
+                setStatus('Unsaved changes: ' + getDiffSummary(), false);
+              });
+              row.appendChild(checkbox);
+            } else {
+              var tag = document.createElement('span');
+              tag.className = 'code';
+              tag.textContent = 'Partner';
+              row.appendChild(tag);
+            }
             list.appendChild(row);
           });
 
@@ -589,6 +630,11 @@
       }
 
       function renderSuggestions(rawQuery) {
+        if (currentView !== 'manage') {
+          suggestionsEl.className = 'suggestions';
+          suggestionsEl.innerHTML = '';
+          return;
+        }
         var q = (rawQuery || '').trim().toLowerCase();
         if (!q) {
           suggestionsEl.className = 'suggestions';
@@ -664,7 +710,7 @@
         var byCode = {};
         allCouncils.forEach(function (c) { byCode[c.lgaCode] = c; });
 
-        var lines = ['Please update TAG adopters.', '', 'Add:'];
+        var lines = ['Please update TAG Partners.', '', 'Add:'];
         if (d.added.length === 0) lines.push('- None');
         d.added.forEach(function (code) {
           var c = byCode[code];
@@ -678,7 +724,7 @@
           lines.push('- ' + (c ? c.lgaName : 'Unknown') + ' (' + code + ')');
         });
 
-        lines.push('', 'Generated from TAG Councils map adopter manager.');
+        lines.push('', 'Generated from TAG Councils map TAG Partners manager.');
         return lines.join('\n');
       }
 
@@ -717,13 +763,13 @@
         refreshMap();
         renderSuggestions(searchInput.value);
         renderStateSections(!!searchInput.value.trim());
-        setStatus('Reset to loaded adopters.', true);
+        setStatus('Reset to loaded TAG Partners.', true);
       });
 
       requestBtn.addEventListener('click', function () {
         var body = buildRequestText();
         if (!isLocalAdmin) {
-          var subject = 'TAG adopter change request';
+          var subject = 'TAG Partners change request';
           var href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
           window.location.href = href;
           setStatus('Drafted request email with your proposed changes.', true);
@@ -741,6 +787,7 @@
         setStatus('Web shared mode: export is disabled. Open via localhost/private LAN IP or use ?admin=1 for local admin mode.', false);
       }
 
+      applyViewMode();
       renderStateSections(false);
       renderSuggestions('');
 
