@@ -310,7 +310,32 @@
       '9': 'OT'
     };
 
-    var isLocalAdmin = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || new URLSearchParams(location.search).get('admin') === '1');
+    function isPrivateIpv4(host) {
+      if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return false;
+      var p = host.split('.').map(function (x) { return Number(x); });
+      if (p.some(function (n) { return Number.isNaN(n) || n < 0 || n > 255; })) return false;
+      return (
+        p[0] === 10 ||
+        (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
+        (p[0] === 192 && p[1] === 168) ||
+        (p[0] === 169 && p[1] === 254)
+      );
+    }
+
+    function isLikelyLocalHost(hostname) {
+      if (!hostname) return false;
+      return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '0.0.0.0' ||
+        hostname === '::1' ||
+        hostname.endsWith('.local') ||
+        isPrivateIpv4(hostname)
+      );
+    }
+
+    var forceAdmin = new URLSearchParams(location.search).get('admin') === '1';
+    var isLocalAdmin = forceAdmin || isLikelyLocalHost(location.hostname);
     var sidebar = document.getElementById('sidebar');
     var openPanelBtn = document.getElementById('openPanelBtn');
     var closePanelBtn = document.getElementById('closePanelBtn');
@@ -345,6 +370,30 @@
     function setStatus(msg, success) {
       statusEl.textContent = msg || '';
       statusEl.classList.toggle('success', !!success);
+    }
+
+    function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+      }
+      return new Promise(function (resolve, reject) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) resolve();
+          else reject(new Error('execCommand copy failed'));
+        } catch (err) {
+          reject(err);
+        }
+      });
     }
 
     function getExportPayload(adoptersSet) {
@@ -640,10 +689,10 @@
 
       copyBtn.addEventListener('click', function () {
         var text = JSON.stringify(getExportPayload(adopters), null, 2) + '\n';
-        navigator.clipboard.writeText(text).then(function () {
+        copyTextToClipboard(text).then(function () {
           setStatus('Copied JSON to clipboard.', true);
         }).catch(function () {
-          setStatus('Could not copy to clipboard. Use Export JSON instead.', false);
+          setStatus('Could not copy to clipboard. Use Export JSON, or add ?admin=1 to force local mode.', false);
         });
       });
 
@@ -664,7 +713,7 @@
           setStatus('Drafted request email with your proposed changes.', true);
           return;
         }
-        navigator.clipboard.writeText(body).then(function () {
+        copyTextToClipboard(body).then(function () {
           setStatus('Copied request text to clipboard (useful for PR notes).', true);
         }).catch(function () {
           setStatus('Could not copy request text.', false);
@@ -673,6 +722,7 @@
 
       if (!isLocalAdmin) {
         exportBtn.disabled = true;
+        setStatus('Web shared mode: export is disabled. Open via localhost/private LAN IP or use ?admin=1 for local admin mode.', false);
       }
 
       renderStateSections(false);
