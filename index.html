@@ -6,13 +6,240 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
+    :root {
+      --panel-width: 390px;
+      --ui-bg: #ffffff;
+      --ui-border: #d8d8d8;
+      --ui-muted: #666;
+      --ui-success: #0b7a2d;
+      --ui-warning-bg: #fff6e5;
+      --ui-warning-border: #f0d9a7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       padding: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
 
     #map {
       height: 100vh;
+      width: 100%;
+    }
+
+    .toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 1200;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      border: 1px solid var(--ui-border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .sidebar {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(94vw, var(--panel-width));
+      background: var(--ui-bg);
+      border-left: 1px solid var(--ui-border);
+      z-index: 1250;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.2s ease;
+      box-shadow: -4px 0 18px rgba(0, 0, 0, 0.12);
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--ui-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .mode-pill {
+      border: 1px solid var(--ui-border);
+      border-radius: 999px;
+      font-size: 11px;
+      padding: 2px 7px;
+      white-space: nowrap;
+      color: #333;
+      background: #fafafa;
+    }
+
+    .sidebar-body {
+      overflow: auto;
+      padding: 10px 12px 100px;
+      flex: 1;
+    }
+
+    .hint {
+      margin: 8px 0 10px;
+      font-size: 12px;
+      color: var(--ui-muted);
+      line-height: 1.4;
+    }
+
+    .warning {
+      border: 1px solid var(--ui-warning-border);
+      background: var(--ui-warning-bg);
+      border-radius: 8px;
+      padding: 8px;
+      margin: 0 0 10px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .search-input {
+      width: 100%;
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .suggestions {
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      padding: 6px;
+      margin-bottom: 10px;
+      background: #fafafa;
+      display: none;
+    }
+
+    .suggestions.active {
+      display: block;
+    }
+
+    .suggestions-title {
+      margin: 0 0 6px;
+      font-size: 12px;
+      color: var(--ui-muted);
+    }
+
+    .suggestion-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 2px;
+      border-bottom: 1px dotted #e4e4e4;
+    }
+
+    .suggestion-row:last-child {
+      border-bottom: none;
+    }
+
+    .state-section {
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      margin-bottom: 9px;
+      overflow: hidden;
+    }
+
+    .state-header {
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: #f8f8f8;
+      padding: 8px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .state-list {
+      padding: 6px 9px;
+      display: none;
+      max-height: 250px;
+      overflow: auto;
+    }
+
+    .state-list.open {
+      display: block;
+    }
+
+    .council-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      padding: 4px 0;
+      border-bottom: 1px dotted #ebebeb;
+      font-size: 12px;
+    }
+
+    .council-row:last-child {
+      border-bottom: none;
+    }
+
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #555;
+      font-size: 11px;
+    }
+
+    .sidebar-footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-top: 1px solid var(--ui-border);
+      background: #fff;
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      font-size: 12px;
+      color: #444;
+      min-height: 16px;
+    }
+
+    .status.success {
+      color: var(--ui-success);
     }
 
     .abs-attribution {
@@ -22,15 +249,47 @@
       background: rgba(255, 255, 255, 0.85);
     }
   </style>
-  <title>Australia — Councils (TAG)</title>
+  <title>Australia - Councils (TAG)</title>
 </head>
 
 <body>
+  <div class="toolbar">
+    <button id="openPanelBtn" class="btn">Manage adopters</button>
+  </div>
+
+  <aside id="sidebar" class="sidebar" aria-hidden="true">
+    <div class="sidebar-header">
+      <h2 class="sidebar-title">Adopter manager</h2>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span id="modePill" class="mode-pill"></span>
+        <button id="closePanelBtn" class="btn">Close</button>
+      </div>
+    </div>
+
+    <div class="sidebar-body">
+      <div id="webWarning" class="warning" style="display:none;"></div>
+      <p class="hint">Toggle councils on/off. Councils are grouped by state. Use search to jump quickly.</p>
+
+      <input id="searchInput" class="search-input" placeholder="Search council name or code" />
+      <div id="suggestions" class="suggestions"></div>
+
+      <div id="stateContainer"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="footer-actions">
+        <button id="exportBtn" class="btn">Export JSON</button>
+        <button id="copyBtn" class="btn">Copy JSON</button>
+        <button id="resetBtn" class="btn">Reset</button>
+        <button id="requestBtn" class="btn">Request changes from Hailey</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+  </aside>
 
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
   <script>
     var map = L.map('map').setView([-25.5, 134], 4);
 
@@ -38,10 +297,71 @@
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
+    var stateOrder = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA', 'OT'];
+    var stateCodeToAbbrev = {
+      '1': 'NSW',
+      '2': 'VIC',
+      '3': 'QLD',
+      '4': 'SA',
+      '5': 'WA',
+      '6': 'TAS',
+      '7': 'NT',
+      '8': 'ACT',
+      '9': 'OT'
+    };
+
+    var isLocalAdmin = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || new URLSearchParams(location.search).get('admin') === '1');
+    var sidebar = document.getElementById('sidebar');
+    var openPanelBtn = document.getElementById('openPanelBtn');
+    var closePanelBtn = document.getElementById('closePanelBtn');
+    var modePill = document.getElementById('modePill');
+    var webWarning = document.getElementById('webWarning');
+    var searchInput = document.getElementById('searchInput');
+    var suggestionsEl = document.getElementById('suggestions');
+    var stateContainer = document.getElementById('stateContainer');
+    var exportBtn = document.getElementById('exportBtn');
+    var copyBtn = document.getElementById('copyBtn');
+    var resetBtn = document.getElementById('resetBtn');
+    var requestBtn = document.getElementById('requestBtn');
+    var statusEl = document.getElementById('status');
+
+    modePill.textContent = isLocalAdmin ? 'Local admin mode' : 'Web shared mode';
+    if (!isLocalAdmin) {
+      webWarning.style.display = 'block';
+      webWarning.textContent = 'Changes here are temporary and are not saved to the shared dataset. Use "Request changes from Hailey" to submit updates.';
+    }
+
+    openPanelBtn.addEventListener('click', function () {
+      sidebar.classList.add('open');
+      sidebar.setAttribute('aria-hidden', 'false');
+      searchInput.focus();
+    });
+
+    closePanelBtn.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      sidebar.setAttribute('aria-hidden', 'true');
+    });
+
+    function setStatus(msg, success) {
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('success', !!success);
+    }
+
+    function getExportPayload(adoptersSet) {
+      var sorted = Array.from(new Set(Array.from(adoptersSet))).sort();
+      return {
+        _meta: {
+          schema: 'lgaCode',
+          asgsYear: 2024,
+          datum: 'GDA2020',
+          note: 'Each entry is an ABS LGA_CODE24 (5 digits). Add councils from any state using the same codes.'
+        },
+        adopters: sorted
+      };
+    }
+
     // Boundaries: ABS ASGS Edition 3 Local Government Areas 2024 (GDA2020), simplified for web.
     // Build from: scripts/build_councils_au.py — see script header for ABS download URL.
-    // Boundaries © Australian Bureau of Statistics — use per ABS licence when publishing.
-    // TAG adopters: data/tag-adopters.json (5-digit ABS lgaCode values).
     Promise.all([
       fetch('data/tag-adopters.json').then(function (r) {
         if (!r.ok) throw new Error('Failed to load tag-adopters.json: ' + r.status);
@@ -54,13 +374,34 @@
     ]).then(function (results) {
       var tagPayload = results[0];
       var geoData = results[1];
-      var list = tagPayload.adopters;
-      if (!Array.isArray(list)) {
+      var initialList = tagPayload.adopters;
+      if (!Array.isArray(initialList)) {
         throw new Error('tag-adopters.json must contain an "adopters" array');
       }
-      var adopters = new Set(list.map(function (c) { return String(c).trim(); }));
 
-      L.geoJson(geoData, {
+      var allCouncils = geoData.features.map(function (feature) {
+        var p = feature.properties || {};
+        var stateAbbrev = stateCodeToAbbrev[String(p.stateCode)] || (p.stateName || 'OT');
+        return {
+          lgaCode: String(p.lgaCode || '').trim(),
+          lgaName: String(p.lgaName || ''),
+          stateCode: String(p.stateCode || ''),
+          stateName: String(p.stateName || ''),
+          stateAbbrev: stateAbbrev
+        };
+      }).filter(function (c) {
+        return c.lgaCode && c.lgaName;
+      }).sort(function (a, b) {
+        if (a.stateAbbrev === b.stateAbbrev) {
+          return a.lgaName.localeCompare(b.lgaName);
+        }
+        return stateOrder.indexOf(a.stateAbbrev) - stateOrder.indexOf(b.stateAbbrev);
+      });
+
+      var baselineAdopters = new Set(initialList.map(function (c) { return String(c).trim(); }));
+      var adopters = new Set(Array.from(baselineAdopters));
+
+      var mapLayer = L.geoJson(geoData, {
         style: function (feature) {
           var code = feature.properties && feature.properties.lgaCode;
           var isTag = code != null && adopters.has(String(code));
@@ -77,14 +418,265 @@
           if (p && p.lgaName) {
             var label = p.lgaName + (p.stateName ? ' (' + p.stateName + ')' : '');
             if (p.lgaCode) {
-              label += ' — ' + p.lgaCode;
+              label += ' - ' + p.lgaCode;
             }
             layer.bindPopup(label);
-          } else {
-            console.warn('Missing lgaName on feature:', feature);
           }
         }
       }).addTo(map);
+
+      function refreshMap() {
+        mapLayer.setStyle(function (feature) {
+          var code = feature.properties && feature.properties.lgaCode;
+          var isTag = code != null && adopters.has(String(code));
+          return {
+            fillColor: isTag ? '#02fa07' : 'gray',
+            weight: 1,
+            opacity: 1,
+            color: '#f55a42',
+            fillOpacity: isTag ? 0.6 : 0.2
+          };
+        });
+      }
+
+      var byState = {};
+      allCouncils.forEach(function (c) {
+        if (!byState[c.stateAbbrev]) byState[c.stateAbbrev] = [];
+        byState[c.stateAbbrev].push(c);
+      });
+
+      function renderStateSections(expandMatches) {
+        stateContainer.innerHTML = '';
+        var query = searchInput.value.trim().toLowerCase();
+        stateOrder.forEach(function (st) {
+          var councils = byState[st];
+          if (!councils || councils.length === 0) return;
+
+          var filtered = councils;
+          if (query) {
+            filtered = councils.filter(function (c) {
+              return c.lgaName.toLowerCase().indexOf(query) !== -1 || c.lgaCode.indexOf(query) !== -1;
+            });
+            if (filtered.length === 0) return;
+          }
+
+          var adopterCount = councils.filter(function (c) { return adopters.has(c.lgaCode); }).length;
+
+          var section = document.createElement('section');
+          section.className = 'state-section';
+
+          var header = document.createElement('button');
+          header.className = 'state-header';
+          header.type = 'button';
+          header.innerHTML = '<strong>' + st + '</strong><span>' + adopterCount + '/' + councils.length + '</span>';
+
+          var list = document.createElement('div');
+          list.className = 'state-list';
+          if (expandMatches || st === 'VIC') list.classList.add('open');
+
+          filtered.forEach(function (c) {
+            var row = document.createElement('label');
+            row.className = 'council-row';
+            row.setAttribute('for', 'adopter_' + c.lgaCode);
+
+            var left = document.createElement('span');
+            left.innerHTML = c.lgaName + ' <span class="code">' + c.lgaCode + '</span>';
+
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'adopter_' + c.lgaCode;
+            checkbox.checked = adopters.has(c.lgaCode);
+            checkbox.addEventListener('change', function () {
+              if (checkbox.checked) {
+                adopters.add(c.lgaCode);
+              } else {
+                adopters.delete(c.lgaCode);
+              }
+              refreshMap();
+              renderSuggestions(searchInput.value);
+              renderStateSections(false);
+              setStatus('Unsaved changes: ' + getDiffSummary(), false);
+            });
+
+            row.appendChild(left);
+            row.appendChild(checkbox);
+            list.appendChild(row);
+          });
+
+          header.addEventListener('click', function () {
+            list.classList.toggle('open');
+          });
+
+          section.appendChild(header);
+          section.appendChild(list);
+          stateContainer.appendChild(section);
+        });
+      }
+
+      function rankMatch(c, q) {
+        var name = c.lgaName.toLowerCase();
+        var code = c.lgaCode;
+        if (code === q) return 0;
+        if (code.indexOf(q) === 0) return 1;
+        if (name.indexOf(q) === 0) return 2;
+        if (name.indexOf(q) !== -1) return 3;
+        return 99;
+      }
+
+      function renderSuggestions(rawQuery) {
+        var q = (rawQuery || '').trim().toLowerCase();
+        if (!q) {
+          suggestionsEl.className = 'suggestions';
+          suggestionsEl.innerHTML = '';
+          return;
+        }
+
+        var matches = allCouncils
+          .map(function (c) { return { council: c, rank: rankMatch(c, q) }; })
+          .filter(function (r) { return r.rank < 99; })
+          .sort(function (a, b) {
+            if (a.rank !== b.rank) return a.rank - b.rank;
+            return a.council.lgaName.localeCompare(b.council.lgaName);
+          })
+          .slice(0, 20);
+
+        suggestionsEl.className = 'suggestions active';
+        if (matches.length === 0) {
+          suggestionsEl.innerHTML = '<p class="suggestions-title">No matches</p>';
+          return;
+        }
+
+        suggestionsEl.innerHTML = '<p class="suggestions-title">Likely matches</p>';
+        matches.forEach(function (entry) {
+          var c = entry.council;
+          var row = document.createElement('label');
+          row.className = 'suggestion-row';
+          row.setAttribute('for', 'suggest_' + c.lgaCode);
+
+          var left = document.createElement('span');
+          left.innerHTML = c.lgaName + ' <span class="code">' + c.stateAbbrev + ' ' + c.lgaCode + '</span>';
+
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.id = 'suggest_' + c.lgaCode;
+          cb.checked = adopters.has(c.lgaCode);
+          cb.addEventListener('change', function () {
+            if (cb.checked) adopters.add(c.lgaCode);
+            else adopters.delete(c.lgaCode);
+            refreshMap();
+            renderSuggestions(searchInput.value);
+            renderStateSections(true);
+            setStatus('Unsaved changes: ' + getDiffSummary(), false);
+          });
+
+          row.appendChild(left);
+          row.appendChild(cb);
+          suggestionsEl.appendChild(row);
+        });
+      }
+
+      function getDiff() {
+        var added = [];
+        var removed = [];
+        adopters.forEach(function (code) {
+          if (!baselineAdopters.has(code)) added.push(code);
+        });
+        baselineAdopters.forEach(function (code) {
+          if (!adopters.has(code)) removed.push(code);
+        });
+        added.sort();
+        removed.sort();
+        return { added: added, removed: removed };
+      }
+
+      function getDiffSummary() {
+        var d = getDiff();
+        return '+' + d.added.length + ' / -' + d.removed.length;
+      }
+
+      function buildRequestText() {
+        var d = getDiff();
+        var byCode = {};
+        allCouncils.forEach(function (c) { byCode[c.lgaCode] = c; });
+
+        var lines = ['Please update TAG adopters.', '', 'Add:'];
+        if (d.added.length === 0) lines.push('- None');
+        d.added.forEach(function (code) {
+          var c = byCode[code];
+          lines.push('- ' + (c ? c.lgaName : 'Unknown') + ' (' + code + ')');
+        });
+
+        lines.push('', 'Remove:');
+        if (d.removed.length === 0) lines.push('- None');
+        d.removed.forEach(function (code) {
+          var c = byCode[code];
+          lines.push('- ' + (c ? c.lgaName : 'Unknown') + ' (' + code + ')');
+        });
+
+        lines.push('', 'Generated from TAG Councils map adopter manager.');
+        return lines.join('\n');
+      }
+
+      searchInput.addEventListener('input', function () {
+        renderSuggestions(searchInput.value);
+        renderStateSections(!!searchInput.value.trim());
+      });
+
+      exportBtn.addEventListener('click', function () {
+        if (!isLocalAdmin) {
+          setStatus('Export disabled in shared web mode. Use Request changes from Hailey.', false);
+          return;
+        }
+        var payload = getExportPayload(adopters);
+        var blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'tag-adopters.updated.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setStatus('Exported tag-adopters.updated.json. Replace data/tag-adopters.json and commit.', true);
+      });
+
+      copyBtn.addEventListener('click', function () {
+        var text = JSON.stringify(getExportPayload(adopters), null, 2) + '\n';
+        navigator.clipboard.writeText(text).then(function () {
+          setStatus('Copied JSON to clipboard.', true);
+        }).catch(function () {
+          setStatus('Could not copy to clipboard. Use Export JSON instead.', false);
+        });
+      });
+
+      resetBtn.addEventListener('click', function () {
+        adopters = new Set(Array.from(baselineAdopters));
+        refreshMap();
+        renderSuggestions(searchInput.value);
+        renderStateSections(!!searchInput.value.trim());
+        setStatus('Reset to loaded adopters.', true);
+      });
+
+      requestBtn.addEventListener('click', function () {
+        var body = buildRequestText();
+        if (!isLocalAdmin) {
+          var subject = 'TAG adopter change request';
+          var href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+          window.location.href = href;
+          setStatus('Drafted request email with your proposed changes.', true);
+          return;
+        }
+        navigator.clipboard.writeText(body).then(function () {
+          setStatus('Copied request text to clipboard (useful for PR notes).', true);
+        }).catch(function () {
+          setStatus('Could not copy request text.', false);
+        });
+      });
+
+      if (!isLocalAdmin) {
+        exportBtn.disabled = true;
+      }
+
+      renderStateSections(false);
+      renderSuggestions('');
 
       var absNote = L.control({ position: 'bottomright' });
       absNote.onAdd = function () {
