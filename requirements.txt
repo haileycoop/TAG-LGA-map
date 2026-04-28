@@ -1,0 +1,4 @@
+# Used by scripts/build_councils_au.py and scripts/migrate_adopters_to_lga_codes.py
+geopandas>=1.0.0
+pyogrio>=0.9.0
+pyproj>=3.6.0

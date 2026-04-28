@@ -14,8 +14,15 @@
     #map {
       height: 100vh;
     }
+
+    .abs-attribution {
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.85);
+    }
   </style>
-  <title>Victoria Councils Map</title>
+  <title>Australia — Councils (TAG)</title>
 </head>
 
 <body>
@@ -25,24 +32,23 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <script>
-    var map = L.map('map').setView([-37.8136, 144.9631], 8);
+    var map = L.map('map').setView([-25.5, 134], 4);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // TAG adopters: single source of truth in data/tag-adopters.json
-    // Boundaries: data/geo/councils-vic.geojson
-    // Data source: https://data.gov.au/dataset/ds-dga-bdf92691-c6fe-42b9-a0e2-a4cd716fa811/details
-    // Converted to GeoJSON using QGIS — licensed under Creative Commons
-    // TODO: ensure we attribute the data source if we use this openly
+    // Boundaries: ABS ASGS Edition 3 Local Government Areas 2024 (GDA2020), simplified for web.
+    // Build from: scripts/build_councils_au.py — see script header for ABS download URL.
+    // Boundaries © Australian Bureau of Statistics — use per ABS licence when publishing.
+    // TAG adopters: data/tag-adopters.json (5-digit ABS lgaCode values).
     Promise.all([
       fetch('data/tag-adopters.json').then(function (r) {
         if (!r.ok) throw new Error('Failed to load tag-adopters.json: ' + r.status);
         return r.json();
       }),
-      fetch('data/geo/councils-vic.geojson').then(function (r) {
-        if (!r.ok) throw new Error('Failed to load councils-vic.geojson: ' + r.status);
+      fetch('data/geo/councils-au.geojson').then(function (r) {
+        if (!r.ok) throw new Error('Failed to load councils-au.geojson: ' + r.status);
         return r.json();
       })
     ]).then(function (results) {
@@ -52,34 +58,47 @@
       if (!Array.isArray(list)) {
         throw new Error('tag-adopters.json must contain an "adopters" array');
       }
-      var adopters = new Set(list);
+      var adopters = new Set(list.map(function (c) { return String(c).trim(); }));
 
       L.geoJson(geoData, {
         style: function (feature) {
-          var name = feature.properties && feature.properties.LGA_NAME;
-          var isTag = name && adopters.has(name);
+          var code = feature.properties && feature.properties.lgaCode;
+          var isTag = code != null && adopters.has(String(code));
           return {
             fillColor: isTag ? '#02fa07' : 'gray',
-            weight: 2,
+            weight: 1,
             opacity: 1,
             color: '#f55a42',
             fillOpacity: isTag ? 0.6 : 0.2
           };
         },
         onEachFeature: function (feature, layer) {
-          if (feature.properties && feature.properties.LGA_NAME) {
-            layer.bindPopup(feature.properties.LGA_NAME);
+          var p = feature.properties;
+          if (p && p.lgaName) {
+            var label = p.lgaName + (p.stateName ? ' (' + p.stateName + ')' : '');
+            if (p.lgaCode) {
+              label += ' — ' + p.lgaCode;
+            }
+            layer.bindPopup(label);
           } else {
-            console.warn("No 'LGA_NAME' property found for this feature:", feature);
+            console.warn('Missing lgaName on feature:', feature);
           }
         }
       }).addTo(map);
+
+      var absNote = L.control({ position: 'bottomright' });
+      absNote.onAdd = function () {
+        var d = L.DomUtil.create('div', 'abs-attribution');
+        d.innerHTML = 'LGA boundaries: ABS ASGS 2024 (simplified). Check ABS licence before public use.';
+        return d;
+      };
+      absNote.addTo(map);
     }).catch(function (err) {
       console.error(err);
       document.body.insertAdjacentHTML(
         'afterbegin',
         '<p style="font-family:sans-serif;padding:1rem;background:#fee;color:#800;">Map data failed to load. ' +
-        'If you just cloned the repo, add <code>data/geo/councils-vic.geojson</code> (your Victoria LGA GeoJSON; you can copy from the former <code>councils.geojson</code> at the project root).</p>'
+        'Run <code>python3 scripts/build_councils_au.py --download</code> from the repo root to fetch ABS boundaries and build <code>data/geo/councils-au.geojson</code>.</p>'
       );
     });
   </script>
