@@ -601,11 +601,13 @@
         var normalizedCode = code == null ? '' : String(code);
         var isTag = normalizedCode && adopters.has(normalizedCode);
         var shadeIdx = shadeByCode[normalizedCode];
+        var borderColor = isTag ? '#c000ff' : '#2f8fff';
+        var borderOpacity = isTag ? 1 : 0.7;
         return {
           fillColor: isTag ? PARTNER_SHADES[shadeIdx != null ? shadeIdx : 0] : 'gray',
           weight: 1,
-          opacity: 1,
-          color: isTag ? '#c000ff' : '#f55a42',
+          opacity: borderOpacity,
+          color: borderColor,
           fillOpacity: isTag ? 0.6 : 0.2
         };
       }
