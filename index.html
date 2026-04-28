@@ -394,7 +394,6 @@
 
     modePill.textContent = isLocalAdmin ? 'Local admin mode' : 'Web shared mode';
     if (!isLocalAdmin) {
-      webWarning.style.display = 'block';
       webWarning.textContent = 'Manage Partners is available, but changes are temporary and not saved to shared data. Use "Request changes from Hailey".';
     }
     sidebar.setAttribute('aria-hidden', 'false');
@@ -572,6 +571,7 @@
         hintText.textContent = isPartnersView
           ? 'Showing current TAG Partners only, grouped by state.'
           : 'Toggle councils on/off. Councils are grouped by state. Use search to jump quickly.';
+        webWarning.style.display = (!isLocalAdmin && !isPartnersView) ? 'block' : 'none';
         searchInput.style.display = isPartnersView ? 'none' : '';
         suggestionsEl.className = 'suggestions';
         suggestionsEl.innerHTML = '';
