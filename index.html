@@ -337,6 +337,12 @@
     }).addTo(map);
 
     var stateOrder = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA', 'OT'];
+    var PARTNER_SHADES = [
+      '#f2e5ff', '#e6ccff', '#d9b3ff', '#cc99ff', '#bf80ff',
+      '#b366ff', '#a64dff', '#9933ff', '#8c1aff', '#7f00ff',
+      '#7300e6', '#6700cc', '#5c00b3', '#520099', '#480080',
+      '#a975ff', '#9f6bff', '#9561ff', '#8b57ff', '#814dff'
+    ];
     var stateCodeToAbbrev = {
       '1': 'NSW',
       '2': 'VIC',
@@ -440,6 +446,68 @@
       };
     }
 
+    function roundCoord(value) {
+      return Number(value).toFixed(5);
+    }
+
+    function edgeKey(a, b) {
+      var p1 = roundCoord(a[0]) + ',' + roundCoord(a[1]);
+      var p2 = roundCoord(b[0]) + ',' + roundCoord(b[1]);
+      return p1 < p2 ? (p1 + '|' + p2) : (p2 + '|' + p1);
+    }
+
+    function forEachRingInGeometry(geometry, callback) {
+      if (!geometry || !geometry.type || !geometry.coordinates) return;
+      if (geometry.type === 'Polygon') {
+        geometry.coordinates.forEach(function (ring) { callback(ring); });
+        return;
+      }
+      if (geometry.type === 'MultiPolygon') {
+        geometry.coordinates.forEach(function (polygon) {
+          polygon.forEach(function (ring) { callback(ring); });
+        });
+      }
+    }
+
+    function buildNeighborsByCode(features) {
+      var edgeToCodes = Object.create(null);
+      var neighborsByCode = Object.create(null);
+
+      features.forEach(function (feature) {
+        var p = feature.properties || {};
+        var code = String(p.lgaCode || '').trim();
+        if (!code) return;
+        if (!neighborsByCode[code]) neighborsByCode[code] = new Set();
+
+        forEachRingInGeometry(feature.geometry, function (ring) {
+          if (!Array.isArray(ring) || ring.length < 2) return;
+          for (var i = 1; i < ring.length; i += 1) {
+            var prev = ring[i - 1];
+            var curr = ring[i];
+            if (!prev || !curr || prev.length < 2 || curr.length < 2) continue;
+            if (prev[0] === curr[0] && prev[1] === curr[1]) continue;
+            var key = edgeKey(prev, curr);
+            if (!edgeToCodes[key]) edgeToCodes[key] = new Set();
+            edgeToCodes[key].add(code);
+          }
+        });
+      });
+
+      Object.keys(edgeToCodes).forEach(function (key) {
+        var codes = Array.from(edgeToCodes[key]);
+        if (codes.length < 2) return;
+        for (var i = 0; i < codes.length; i += 1) {
+          for (var j = i + 1; j < codes.length; j += 1) {
+            var a = codes[i];
+            var b = codes[j];
+            neighborsByCode[a].add(b);
+            neighborsByCode[b].add(a);
+          }
+        }
+      });
+      return neighborsByCode;
+    }
+
     // Boundaries: ABS ASGS Edition 3 Local Government Areas 2024 (GDA2020), simplified for web.
     // Build from: scripts/build_councils_au.py — see script header for ABS download URL.
     Promise.all([
@@ -480,19 +548,72 @@
 
       var baselineAdopters = new Set(initialList.map(function (c) { return String(c).trim(); }));
       var adopters = new Set(Array.from(baselineAdopters));
+      var neighborsByCode = buildNeighborsByCode(geoData.features);
+      var shadeByCode = Object.create(null);
+
+      function recomputePartnerShades() {
+        shadeByCode = Object.create(null);
+        var usage = new Array(PARTNER_SHADES.length).fill(0);
+        var partnerCodes = Array.from(adopters);
+
+        partnerCodes.sort(function (a, b) {
+          var neighborsA = neighborsByCode[a] || new Set();
+          var neighborsB = neighborsByCode[b] || new Set();
+          var degreeA = 0;
+          var degreeB = 0;
+          neighborsA.forEach(function (n) { if (adopters.has(n)) degreeA += 1; });
+          neighborsB.forEach(function (n) { if (adopters.has(n)) degreeB += 1; });
+          return degreeB - degreeA || a.localeCompare(b);
+        });
+
+        partnerCodes.forEach(function (code) {
+          var blocked = new Set();
+          var neighbors = neighborsByCode[code] || new Set();
+          neighbors.forEach(function (n) {
+            if (shadeByCode[n] !== undefined) blocked.add(shadeByCode[n]);
+          });
+
+          var chosen = -1;
+          for (var i = 0; i < PARTNER_SHADES.length; i += 1) {
+            if (!blocked.has(i)) {
+              chosen = i;
+              break;
+            }
+          }
+          if (chosen === -1) {
+            var minUsage = usage[0];
+            chosen = 0;
+            for (var j = 1; j < usage.length; j += 1) {
+              if (usage[j] < minUsage) {
+                minUsage = usage[j];
+                chosen = j;
+              }
+            }
+            console.warn('Partner shading exceeded palette for', code);
+          }
+          shadeByCode[code] = chosen;
+          usage[chosen] += 1;
+        });
+      }
+
+      function getCouncilStyle(feature) {
+        var code = feature.properties && feature.properties.lgaCode;
+        var normalizedCode = code == null ? '' : String(code);
+        var isTag = normalizedCode && adopters.has(normalizedCode);
+        var shadeIdx = shadeByCode[normalizedCode];
+        return {
+          fillColor: isTag ? PARTNER_SHADES[shadeIdx != null ? shadeIdx : 0] : 'gray',
+          weight: 1,
+          opacity: 1,
+          color: isTag ? '#c000ff' : '#f55a42',
+          fillOpacity: isTag ? 0.6 : 0.2
+        };
+      }
+
+      recomputePartnerShades();
 
       var mapLayer = L.geoJson(geoData, {
-        style: function (feature) {
-          var code = feature.properties && feature.properties.lgaCode;
-          var isTag = code != null && adopters.has(String(code));
-          return {
-            fillColor: isTag ? '#02fa07' : 'gray',
-            weight: 1,
-            opacity: 1,
-            color: '#f55a42',
-            fillOpacity: isTag ? 0.6 : 0.2
-          };
-        },
+        style: getCouncilStyle,
         onEachFeature: function (feature, layer) {
           var p = feature.properties;
           if (p && p.lgaName) {
@@ -542,17 +663,8 @@
       });
 
       function refreshMap() {
-        mapLayer.setStyle(function (feature) {
-          var code = feature.properties && feature.properties.lgaCode;
-          var isTag = code != null && adopters.has(String(code));
-          return {
-            fillColor: isTag ? '#02fa07' : 'gray',
-            weight: 1,
-            opacity: 1,
-            color: '#f55a42',
-            fillOpacity: isTag ? 0.6 : 0.2
-          };
-        });
+        recomputePartnerShades();
+        mapLayer.setStyle(getCouncilStyle);
       }
 
       var byState = {};
