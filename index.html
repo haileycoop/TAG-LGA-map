@@ -24,11 +24,20 @@
       margin: 0;
       padding: 0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      height: 100vh;
+    }
+
+    .app-shell {
+      height: 100vh;
+      display: flex;
+      width: 100%;
     }
 
     #map {
-      height: 100vh;
+      height: 100%;
       width: 100%;
+      min-width: 0;
+      flex: 1;
     }
 
     .btn {
@@ -46,17 +55,15 @@
     }
 
     .sidebar {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
+      position: relative;
       width: min(94vw, var(--panel-width));
+      min-width: 320px;
+      height: 100%;
       background: var(--ui-bg);
       border-left: 1px solid var(--ui-border);
-      z-index: 1250;
       display: flex;
       flex-direction: column;
-      box-shadow: -4px 0 18px rgba(0, 0, 0, 0.12);
+      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.08);
     }
 
     .view-toggle {
@@ -189,6 +196,12 @@
       align-items: center;
     }
 
+    .state-zoom {
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
     .state-list {
       padding: 6px 9px;
       display: none;
@@ -214,6 +227,12 @@
       border-bottom: none;
     }
 
+    .council-zoom {
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
     .code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       color: #555;
@@ -221,9 +240,7 @@
     }
 
     .sidebar-footer {
-      position: absolute;
-      left: 0;
-      right: 0;
+      position: sticky;
       bottom: 0;
       border-top: 1px solid var(--ui-border);
       background: #fff;
@@ -252,6 +269,16 @@
       color: var(--ui-success);
     }
 
+    .partners-total {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      background: #fafafa;
+    }
+
     .abs-attribution {
       font-family: system-ui, sans-serif;
       font-size: 11px;
@@ -263,40 +290,43 @@
 </head>
 
 <body>
-  <aside id="sidebar" class="sidebar" aria-hidden="true">
-    <div class="sidebar-header">
-      <h2 id="sidebarTitle" class="sidebar-title">TAG Partners</h2>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div class="view-toggle">
-          <button id="partnersViewBtn" class="active" type="button">TAG Partners</button>
-          <button id="manageViewBtn" type="button">Manage Partners</button>
+  <div class="app-shell">
+    <div id="map"></div>
+
+    <aside id="sidebar" class="sidebar" aria-hidden="true">
+      <div class="sidebar-header">
+        <h2 id="sidebarTitle" class="sidebar-title">TAG Partners</h2>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="view-toggle">
+            <button id="partnersViewBtn" class="active" type="button">TAG Partners</button>
+            <button id="manageViewBtn" type="button">Manage Partners</button>
+          </div>
+          <span id="modePill" class="mode-pill"></span>
         </div>
-        <span id="modePill" class="mode-pill"></span>
       </div>
-    </div>
 
-    <div class="sidebar-body">
-      <div id="webWarning" class="warning" style="display:none;"></div>
-      <p id="hintText" class="hint"></p>
+      <div class="sidebar-body">
+        <div id="webWarning" class="warning" style="display:none;"></div>
+        <p id="hintText" class="hint"></p>
 
-      <input id="searchInput" class="search-input" placeholder="Search council name or code" />
-      <div id="suggestions" class="suggestions"></div>
+        <input id="searchInput" class="search-input" placeholder="Search council name or code" />
+        <div id="suggestions" class="suggestions"></div>
 
-      <div id="stateContainer"></div>
-    </div>
-
-    <div class="sidebar-footer">
-      <div class="footer-actions">
-        <button id="exportBtn" class="btn">Export JSON</button>
-        <button id="copyBtn" class="btn">Copy JSON</button>
-        <button id="resetBtn" class="btn">Reset</button>
-        <button id="requestBtn" class="btn">Request changes from Hailey</button>
+        <div id="stateContainer"></div>
+        <div id="partnersTotal" class="partners-total"></div>
       </div>
-      <div id="status" class="status"></div>
-    </div>
-  </aside>
 
-  <div id="map"></div>
+      <div class="sidebar-footer">
+        <div class="footer-actions">
+          <button id="exportBtn" class="btn">Export JSON</button>
+          <button id="copyBtn" class="btn">Copy JSON</button>
+          <button id="resetBtn" class="btn">Reset</button>
+          <button id="requestBtn" class="btn">Request changes from Hailey</button>
+        </div>
+        <div id="status" class="status"></div>
+      </div>
+    </aside>
+  </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
@@ -360,6 +390,7 @@
     var resetBtn = document.getElementById('resetBtn');
     var requestBtn = document.getElementById('requestBtn');
     var statusEl = document.getElementById('status');
+    var partnersTotalEl = document.getElementById('partnersTotal');
 
     modePill.textContent = isLocalAdmin ? 'Local admin mode' : 'Web shared mode';
     if (!isLocalAdmin) {
@@ -475,21 +506,41 @@
         }
       }).addTo(map);
 
-      // Fit on mainland/state councils (exclude OT extents) so Australia starts closer.
-      var mainlandBounds = L.latLngBounds([]);
-      geoData.features.forEach(function (feature) {
-        var props = feature.properties || {};
-        if (String(props.stateCode || '') === '9') {
-          return; // OT can include far external islands that force a zoomed-out view.
-        }
-        var tmpLayer = L.geoJson(feature);
-        mainlandBounds.extend(tmpLayer.getBounds());
-      });
-      if (mainlandBounds.isValid()) {
-        map.fitBounds(mainlandBounds, { padding: [20, 20] });
-      } else {
-        map.fitBounds(mapLayer.getBounds(), { padding: [20, 20] });
+      // Fit on mainland/state councils (exclude OT extents) so Australia starts close
+      // without clipping. Re-run after layout settles and on resize.
+      var continentalEnvelope = L.latLngBounds(
+        L.latLng(-45.5, 110.0),
+        L.latLng(-9.0, 155.5)
+      );
+
+      function fitMapToBounds(bounds, padding) {
+        if (!bounds || !bounds.isValid()) return;
+        map.invalidateSize();
+        map.fitBounds(bounds, { padding: padding || [8, 8], animate: false });
       }
+
+      function fitAustraliaToPane() {
+        fitMapToBounds(continentalEnvelope, [8, 8]);
+      }
+      fitAustraliaToPane();
+      setTimeout(fitAustraliaToPane, 0);
+      window.addEventListener('resize', fitAustraliaToPane);
+
+      var stateBoundsByAbbrev = {};
+      var lgaBoundsByCode = {};
+      geoData.features.forEach(function (feature) {
+        var p = feature.properties || {};
+        var st = stateCodeToAbbrev[String(p.stateCode)] || (p.stateName || 'OT');
+        var code = String(p.lgaCode || '');
+        var b = L.geoJson(feature).getBounds();
+        if (!b.isValid()) return;
+        if (!stateBoundsByAbbrev[st]) stateBoundsByAbbrev[st] = L.latLngBounds([]);
+        stateBoundsByAbbrev[st].extend(b);
+        if (code) {
+          if (!lgaBoundsByCode[code]) lgaBoundsByCode[code] = L.latLngBounds([]);
+          lgaBoundsByCode[code].extend(b);
+        }
+      });
 
       function refreshMap() {
         mapLayer.setStyle(function (feature) {
@@ -525,6 +576,7 @@
         suggestionsEl.className = 'suggestions';
         suggestionsEl.innerHTML = '';
         exportBtn.parentElement.classList.toggle('hidden', isPartnersView);
+        partnersTotalEl.style.display = isPartnersView ? '' : 'none';
       }
 
       partnersViewBtn.addEventListener('click', function () {
@@ -568,7 +620,7 @@
           var header = document.createElement('button');
           header.className = 'state-header';
           header.type = 'button';
-          header.innerHTML = '<strong>' + st + '</strong><span>' + adopterCount + '/' + councils.length + '</span>';
+          header.innerHTML = '<strong class="state-zoom" title="Zoom to ' + st + '">' + st + '</strong><span>' + adopterCount + '/' + councils.length + '</span>';
 
           var list = document.createElement('div');
           list.className = 'state-list';
@@ -580,7 +632,14 @@
             row.setAttribute('for', 'adopter_' + c.lgaCode);
 
             var left = document.createElement('span');
-            left.innerHTML = c.lgaName + ' <span class="code">' + c.lgaCode + '</span>';
+            left.innerHTML = '<span class="council-zoom" title="Zoom to ' + c.lgaName + '">' + c.lgaName + '</span> <span class="code">' + c.lgaCode + '</span>';
+            var lgaZoomLabel = left.querySelector('.council-zoom');
+            lgaZoomLabel.addEventListener('click', function (evt) {
+              evt.preventDefault();
+              evt.stopPropagation();
+              var lgaBounds = lgaBoundsByCode[c.lgaCode];
+              fitMapToBounds(lgaBounds, [24, 24]);
+            });
 
             row.appendChild(left);
             if (currentView === 'manage') {
@@ -613,10 +672,20 @@
             list.classList.toggle('open');
           });
 
+          var zoomLabel = header.querySelector('.state-zoom');
+          zoomLabel.addEventListener('click', function (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            var stateBounds = stateBoundsByAbbrev[st];
+            fitMapToBounds(stateBounds, [12, 12]);
+          });
+
           section.appendChild(header);
           section.appendChild(list);
           stateContainer.appendChild(section);
         });
+
+        partnersTotalEl.textContent = 'Total TAG Partners: ' + adopters.size + '/' + allCouncils.length;
       }
 
       function rankMatch(c, q) {
