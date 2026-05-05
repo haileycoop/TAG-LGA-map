@@ -571,3 +571,5 @@
 { "type": "Feature", "properties": { "lgaCode": "ZZZZZ", "lgaName": "Outside Australia", "stateCode": "Z", "stateName": "Outside Australia", "areaSqkm": null }, "geometry": null }
 ]
 }
+
+
